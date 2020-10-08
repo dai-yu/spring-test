@@ -45,10 +45,10 @@ class RsControllerTest {
 
   @BeforeEach
   void setUp() {
+    tradeRepository.deleteAll();
     voteRepository.deleteAll();
     rsEventRepository.deleteAll();
     userRepository.deleteAll();
-    tradeRepository.deleteAll();
     userDto =
             UserDto.builder()
                     .voteNum(10)
@@ -246,23 +246,39 @@ class RsControllerTest {
   }
 
   @Test
-  public void shouldDeleteOldRsEventWhenNewTradeAdded() throws Exception {
+  public void shouldGetRsEventListOrder() throws Exception {
     UserDto save = userRepository.save(userDto);
-    RsEventDto firstRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第一条事件").user(save).build();
-    RsEventDto secondRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第二条事件").user(save).build();
+    RsEventDto firstRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第一条事件").voteNum(5).user(save).build();
+    RsEventDto secondRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第二条事件").voteNum(10).user(save).build();
     firstRsEventDto = rsEventRepository.save(firstRsEventDto);
     secondRsEventDto = rsEventRepository.save(secondRsEventDto);
-    TradeDto tradeDto = TradeDto.builder().amount(5).rank(1).rsEventDto(firstRsEventDto).build();
-    tradeRepository.save(tradeDto);
-    Trade trade = Trade.builder().rank(1).amount(10).build();
+    mockMvc.perform(get("/rs/list"))
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].eventName", is("第二条事件")))
+            .andExpect(jsonPath("$[0].voteNum", is(10)))
+            .andExpect(jsonPath("$[1].voteNum", is(5)))
+            .andExpect(jsonPath("$[1].eventName", is("第一条事件")));
+  }
+  @Test
+  public void shouldGetRsEventListOrderWhenBuyRsEvent() throws Exception {
+    UserDto save = userRepository.save(userDto);
+    RsEventDto firstRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第一条事件").voteNum(5).user(save).build();
+    RsEventDto secondRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第二条事件").voteNum(10).user(save).build();
+    RsEventDto thirdRsEventDto = RsEventDto.builder().keyword("无分类").eventName("第三条事件").voteNum(1).user(save).build();
+    firstRsEventDto = rsEventRepository.save(firstRsEventDto);
+    secondRsEventDto = rsEventRepository.save(secondRsEventDto);
+    thirdRsEventDto = rsEventRepository.save(thirdRsEventDto);
+    Trade trade = Trade.builder().amount(10).rank(2).build();
     String jsonString = objectMapper.writeValueAsString(trade);
-
-    mockMvc.perform(post("/rs/buy/{id}", secondRsEventDto.getId()).content(jsonString).contentType(MediaType.APPLICATION_JSON))
+    mockMvc.perform(post("/rs/buy/{id}", thirdRsEventDto.getId()).content(jsonString).contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk());
-
-    List<RsEventDto> rsEventDtoList = rsEventRepository.findAll();
-    assertEquals(rsEventDtoList.size(), 1);
-    assertEquals(rsEventDtoList.get(0).getRank(), 1);
-    assertEquals(rsEventDtoList.get(0).getEventName(), secondRsEventDto.getEventName());
+    mockMvc.perform(get("/rs/list"))
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].eventName", is("第二条事件")))
+            .andExpect(jsonPath("$[0].voteNum", is(10)))
+            .andExpect(jsonPath("$[1].voteNum", is(1)))
+            .andExpect(jsonPath("$[1].eventName", is("第三条事件")))
+            .andExpect(jsonPath("$[2].voteNum", is(5)))
+            .andExpect(jsonPath("$[2].eventName", is("第一条事件")));
   }
 }

@@ -1,5 +1,6 @@
 package com.thoughtworks.rslist.service;
 
+import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.domain.Vote;
 import com.thoughtworks.rslist.dto.RsEventDto;
@@ -14,7 +15,10 @@ import com.thoughtworks.rslist.repository.UserRepository;
 import com.thoughtworks.rslist.repository.VoteRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class RsService {
@@ -79,5 +83,33 @@ public class RsService {
     rsEventDto.setRank(trade.getRank());
     tradeRepository.save(tradeDto);
     rsEventRepository.save(rsEventDto);
+  }
+
+  public List<RsEvent> getRsEventList() {
+    List<RsEventDto> rsEventDtoList = rsEventRepository.findAll();
+    return sortRsEventList(rsEventDtoList);
+
+  }
+
+  private List<RsEvent> sortRsEventList(List<RsEventDto> rsEventDtoList) {
+    List<RsEvent> rsEventList = rsEventDtoList.stream()
+            .map(item -> changeRsEventDtoToRsEvent(item))
+            .sorted(Comparator.comparing(RsEvent::getVoteNum).reversed())
+            .collect(Collectors.toList());
+    List<RsEvent> noBuyRsEventList = rsEventList.stream().filter(item -> item.getRank() == 0).collect(Collectors.toList());
+    rsEventList.stream()
+            .filter(item -> item.getRank() != 0)
+            .sorted(Comparator.comparing(RsEvent::getRank).reversed())
+            .forEach(item -> noBuyRsEventList.add(item.getRank() - 1, item));
+    return noBuyRsEventList;
+  }
+
+  private RsEvent changeRsEventDtoToRsEvent(RsEventDto item) {
+    return RsEvent.builder().eventName(item.getEventName())
+            .userId(item.getId())
+            .keyword(item.getKeyword())
+            .rank(item.getRank())
+            .voteNum(item.getVoteNum())
+            .build();
   }
 }

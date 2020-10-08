@@ -18,10 +18,13 @@ import javax.persistence.Table;
 @NoArgsConstructor
 @Table(name = "rsEvent")
 public class RsEventDto {
-  @Id @GeneratedValue private int id;
+  @Id
+  @GeneratedValue
+  private int id;
   private String eventName;
   private String keyword;
   private int voteNum;
-  private int rank;
-  @ManyToOne private UserDto user;
+  private int rank=0;
+  @ManyToOne
+  private UserDto user;
 }
