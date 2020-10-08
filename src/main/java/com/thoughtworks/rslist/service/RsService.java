@@ -60,12 +60,16 @@ public class RsService {
       throw new RsEventNotExistsException("rsEvent not exists");
     }
 
-    Integer maxAmount = tradeRepository.findMaxAmountByRank(trade.getRank());
-    if (maxAmount == null) {
-      maxAmount = 0;
-    }
-    if (trade.getAmount() <= maxAmount) {
-      throw new AmountIncorrectException("amount is incorrect");
+    Optional<TradeDto> tradeDtoOptional = tradeRepository.findByRank(trade.getRank());
+
+    if (tradeDtoOptional.isPresent()) {
+      if (trade.getAmount() <= tradeDtoOptional.get().getAmount()) {
+        throw new AmountIncorrectException("amount is incorrect");
+      }
+      if (tradeDtoOptional.get().getRsEventDto().getId() != id) {
+        tradeRepository.delete(tradeDtoOptional.get());
+        rsEventRepository.delete(tradeDtoOptional.get().getRsEventDto());
+      }
     }
     TradeDto tradeDto = TradeDto.builder()
             .amount(trade.getAmount())
